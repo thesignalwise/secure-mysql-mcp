@@ -1,0 +1,62 @@
+{
+  "encryption_key": "sNimWThMb9qUqCd_FoIBd63NnKPxvVzlUh5ua2QiLPQ=",
+  "servers": [
+    {
+      "id": "local-mysql",
+      "alias": "Local MySQL Server",
+      "host": "localhost",
+      "port": 3306,
+      "user": "root",
+      "password": "your_password_here",
+      "default_database": "mysql",
+      "enabled": true,
+      "encrypted": false,
+      "max_connections": 5,
+      "connection_timeout": 10,
+      "permissions": []
+    },
+    {
+      "id": "prod-db",
+      "alias": "Production Database",
+      "host": "prod.example.com",
+      "port": 3306,
+      "user": "app_user",
+      "password": "encrypted_password_here",
+      "default_database": "production",
+      "enabled": true,
+      "encrypted": true,
+      "max_connections": 10,
+      "connection_timeout": 30,
+      "permissions": ["READ_ONLY"]
+    },
+    {
+      "id": "staging-db",
+      "alias": "Staging Database (Under Maintenance)",
+      "host": "staging.example.com",
+      "port": 3306,
+      "user": "staging_user",
+      "password": "staging_password",
+      "default_database": "staging",
+      "enabled": false,
+      "encrypted": false,
+      "max_connections": 5,
+      "connection_timeout": 15,
+      "permissions": [],
+      "_comment": "Temporarily disabled for database migration"
+    },
+    {
+      "id": "analytics-db",
+      "alias": "Analytics Database",
+      "host": "analytics.example.com",
+      "port": 3306,
+      "user": "analyst",
+      "password": "gAAAAABoc3Co8q0Wrk377a12OWgcUXtV1H6Vr8TGM8UF_w_JqUm6xshzwCqAhrSifSZP0tfQUyor2HQWCTbI3IPTIgzYhN0mF62BkWTlb3ZA0SIR3yVmzuM=",
+      "enabled": true,
+      "encrypted": true,
+      "max_connections": 3,
+      "connection_timeout": 20,
+      "permissions": ["READ_ONLY"],
+      "_comment": "No default_database - must explicitly connect"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+# MCP Protocol
+mcp>=0.1.0
+
+# MySQL async driver
+aiomysql>=0.2.0
+
+# Encryption for passwords
+cryptography>=41.0.0
+
+# Async support (if not already installed)
+asyncio
