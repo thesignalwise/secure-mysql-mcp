@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Secure MySQL MCP</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f7f7fb;
+      --fg: #1f2933;
+      --accent: #0070f3;
+      --card: #ffffff;
+      --muted: #4b5563;
+      font-family: "Segoe UI", "PingFang SC", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.6;
+    }
+    header {
+      padding: 4rem 1.5rem 2rem;
+      text-align: center;
+      background: radial-gradient(circle at top, rgba(0,112,243,.15), transparent 55%);
+    }
+    header h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3rem);
+    }
+    header p {
+      margin-top: 1rem;
+      color: var(--muted);
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 1.5rem 4rem;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 1.75rem;
+      margin-top: 1.5rem;
+      box-shadow: 0 15px 35px rgba(15,23,42,0.08);
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 1.5rem;
+    }
+    ul {
+      padding-left: 1.25rem;
+    }
+    code, pre {
+      font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+      background: rgba(99,102,241,0.08);
+      border-radius: 6px;
+    }
+    pre {
+      padding: 1rem;
+      overflow-x: auto;
+    }
+    .cta {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .gallery img {
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(15,23,42,0.12);
+    }
+    footer {
+      text-align: center;
+      padding: 2rem 1rem 3rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Secure MySQL MCP</h1>
+    <p>面向 Claude / MCP 生态的安全 MySQL 服务，支持多实例、只读权限、防泄露加密与 HTTP Bearer 认证。</p>
+    <a class="cta" href="https://github.com/thesignalwise/secure-mysql-mcp" target="_blank" rel="noreferrer">查看 GitHub</a>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>核心特性</h2>
+      <ul>
+        <li>🎯 FastMCP HTTP 服务：默认 0.0.0.0:8090，SSE / streamable HTTP 兼容</li>
+        <li>🔐 Bearer Token 多用户认证，可通过 config/servers.json 或 .env 配置</li>
+        <li>🛡️ READ_ONLY 保护，阻止危险写操作且自动审计完整 SQL</li>
+        <li>📜 `logs/sql_audit.log` 记录 session、数据库、耗时和 Token 前缀</li>
+        <li>🧪 自带 `test_client.py` CLI；`start.sh` 一键启动</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>快速上手</h2>
+      <pre><code># 安装依赖
+pip install -r requirements.txt
+
+# 启动服务（默认 0.0.0.0:8090）
+./start.sh
+
+# 运行测试客户端
+python test_client.py --url http://127.0.0.1:8090/mcp \
+  --token &lt;your-token&gt;
+</code></pre>
+      <p>配置文件示例请查看 <code>config/servers.example.json</code>，其中顶层 <code>auth.tokens</code> 可填写多个 Bearer Token。</p>
+    </section>
+
+    <section class="card">
+      <h2>UI 预览</h2>
+      <div class="gallery">
+        <img src="../images/Cherry-Studio-MCP-Configuration.png" alt="Cherry Studio MCP Configuration" />
+        <img src="../images/Cherry-Studio-MCP-Using-1.png" alt="Cherry Studio MCP Usage 1" />
+        <img src="../images/Cherry-Studio-MCP-Using-2.png" alt="Cherry Studio MCP Usage 2" />
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>部署到 GitHub Pages</h2>
+      <p>将本页所在的 <code>docs/</code> 目录配置为 Pages 来源即可。仓库本身无需命名为 <code>username.github.io</code>，只要在仓库设置中选择 “Pages &gt; Build from: GitHub Actions 或 doc folder” 即可发布项目页面。</p>
+      <p><strong>提示：</strong>若想部署用户/组织主页（顶级域名 <code>username.github.io</code>），才需要同名仓库；项目级页面可以使用任意仓库名。</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 Secure MySQL MCP · Bearer Auth · SQL Audit · FastMCP</p>
+  </footer>
+</body>
+</html>
