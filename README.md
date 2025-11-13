@@ -409,7 +409,7 @@ MIT License - 详见LICENSE文件
 ---
 
 **版本信息**: v1.1.0  
-**最后更新**: 2024  
+**最后更新**: 2025-11-13  
 **新增功能**: 密码加密工具、增强安全性
 
 ---
@@ -822,5 +822,5 @@ Contributions welcome! Please submit pull requests or open issues for bugs and f
 ---
 
 **Version Info**: v1.1.0  
-**Last Updated**: 2024  
+**Last Updated**: 2025-11-13  
 **New Features**: Password encryption tool, enhanced security
