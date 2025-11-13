@@ -1,98 +1,86 @@
 #!/usr/bin/env python3
 """
-Secure MySQL MCP Test Client
-This provides an interactive test client for the Secure MySQL MCP
+Secure MySQL MCP Test Client (FastMCP HTTP)
+Connects to the Secure MySQL FastMCP server over streamable HTTP.
 """
 
+import argparse
 import asyncio
 import json
-import sys
-from typing import Dict, Any, Optional
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from typing import Any, Dict, Optional
+
+from fastmcp import Client
+from fastmcp.exceptions import ToolError
+
 
 class MySQLMCPTestClient:
     """Interactive test client for Secure MySQL MCP"""
-    
-    def __init__(self):
-        self.session: Optional[ClientSession] = None
+
+    def __init__(self, base_url: str, token: Optional[str] = None):
+        self.base_url = base_url
+        self.client = Client(base_url, auth=token) if token else Client(base_url)
         self.tools: Dict[str, Any] = {}
-        self.server_script_path: str = ""
-    
-    async def run_with_server(self, server_script_path: str = "secure_mysql_mcp_server.py"):
-        """Run the client with the server"""
-        self.server_script_path = server_script_path
-        print(f"Starting Secure MySQL MCP from {server_script_path}...")
-        
-        server_params = StdioServerParameters(
-            command=sys.executable,
-            args=[server_script_path],
-            env=None
-        )
-        
-        async with stdio_client(server_params) as (read, write):
-            async with ClientSession(read, write) as session:
-                self.session = session
-                
-                # Initialize session
-                await session.initialize()
-                
-                # Get available tools
-                tools_response = await session.list_tools()
-                self.tools = {tool.name: tool for tool in tools_response.tools}
-                
-                print(f"Connected! Available tools: {list(self.tools.keys())}")
-                
-                # Run interactive mode
-                await self.interactive_mode()
-    
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
-        """Call a tool on the server"""
-        if not self.session:
-            raise RuntimeError("Not connected to server")
-        
+
+    async def run(self):
+        print(f"Connecting to Secure MySQL MCP at {self.base_url} ...")
+        async with self.client:
+            tool_list = await self.client.list_tools()
+            self.tools = {tool.name: tool for tool in tool_list}
+            print(f"Connected! Available tools: {list(self.tools.keys())}")
+            await self.interactive_mode()
+
+    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         if tool_name not in self.tools:
             raise ValueError(f"Unknown tool: {tool_name}")
-        
-        result = await self.session.call_tool(tool_name, arguments)
-        return json.loads(result.content[0].text)
-    
+
+        try:
+            result = await self.client.call_tool(tool_name, arguments)
+        except ToolError as exc:
+            raise RuntimeError(str(exc)) from exc
+
+        if result.data is not None:
+            return result.data  # FastMCP parsed structured data
+        if result.structured_content:
+            return result.structured_content
+        for block in result.content:
+            if getattr(block, "type", "") == "text":
+                try:
+                    return json.loads(block.text)
+                except json.JSONDecodeError:
+                    return {"status": "error", "error": block.text}
+        return {}
+
     async def cmd_tools(self):
-        """Show available tools"""
         print("\nAvailable MCP Tools:")
         if not self.tools:
             print("  No tools loaded!")
             return
-        
+
         for name, tool in self.tools.items():
             print(f"\n  Tool: {name}")
             print(f"    Description: {tool.description}")
-            if hasattr(tool, 'inputSchema'):
-                schema = tool.inputSchema
-                if schema.get('properties'):
-                    print("    Parameters:")
-                    for param, details in schema['properties'].items():
-                        required = param in schema.get('required', [])
-                        req_text = " (required)" if required else " (optional)"
-                        print(f"      - {param}: {details.get('type', 'any')}{req_text}")
-                        if 'description' in details:
-                            print(f"        {details['description']}")
-    
+            schema = getattr(tool, "inputSchema", None)
+            if schema and schema.get("properties"):
+                print("    Parameters:")
+                for param, details in schema["properties"].items():
+                    required = param in schema.get("required", [])
+                    req_text = " (required)" if required else " (optional)"
+                    print(f"      - {param}: {details.get('type', 'any')}{req_text}")
+                    if "description" in details:
+                        print(f"        {details['description']}")
+
     async def interactive_mode(self):
-        """Run interactive test mode"""
         print("\n=== Secure MySQL MCP Test Client ===")
-        print("Type 'help' for available commands, 'quit' to exit\n")
-        
-        # Show initial status
+        print("Type 'help' for commands, 'quit' to exit\n")
         print(f"Connected to MCP server with {len(self.tools)} tools available")
-        
+
         while True:
             try:
                 command = input("> ").strip()
-                
+
                 if command == "quit":
                     break
-                elif command == "help":
+                if command == "help":
                     self.print_help()
                 elif command == "tools":
                     await self.cmd_tools()
@@ -110,18 +98,14 @@ class MySQLMCPTestClient:
                     await self.run_automated_tests()
                 else:
                     print(f"Unknown command: {command}")
-                    print("Type 'help' for available commands")
-            
             except KeyboardInterrupt:
                 print("\nUse 'quit' to exit")
-            except Exception as e:
-                print(f"Error: {e}")
-                import traceback
-                traceback.print_exc()
-    
+            except Exception as exc:
+                print(f"Error: {exc}")
+
     def print_help(self):
-        """Print help information"""
-        print("""
+        print(
+            """
 Available commands:
   help                - Show this help message
   tools               - Show all available MCP tools
@@ -132,267 +116,223 @@ Available commands:
   status              - Show connection status
   test                - Run automated tests
   quit                - Exit the client
-        """)
-    
+            """
+        )
+
     async def cmd_list_databases(self):
-        """List available databases"""
         result = await self.call_tool("list_available_databases", {})
-        
+
         print("\nAvailable MySQL Servers:")
-        
-        # Show summary if available
-        if "summary" in result:
-            summary = result["summary"]
-            print(f"\nSummary: {summary['enabled']} enabled, {summary['connected']} connected, {summary['errors']} errors")
-        
+        summary = result.get("summary")
+        if summary:
+            print(
+                f"\nSummary: {summary['enabled']} enabled, {summary['connected']} connected, {summary['errors']} errors"
+            )
+
         for server in result.get("servers", []):
             print(f"\n  Server: {server['id']} ({server['alias']})")
-            # Note: Host/port info is not returned for security reasons
             print(f"    Status: {server['status']}")
-            if server.get('default_database'):
+            if server.get("default_database"):
                 print(f"    Default DB: {server['default_database']}")
-            if server.get('permissions'):
+            if server.get("permissions"):
                 print(f"    Permissions: {', '.join(server['permissions'])}")
-            if server.get('databases'):
-                print(f"    Databases: {', '.join(server['databases'][:5])}")
-                if len(server['databases']) > 5:
-                    print(f"                ... and {len(server['databases']) - 5} more")
-            if 'error' in server:
+            if server.get("databases"):
+                sample = ", ".join(server["databases"][:5])
+                print(f"    Databases: {sample}")
+                if len(server["databases"]) > 5:
+                    print(f"              ... and {len(server['databases']) - 5} more")
+            if "error" in server:
                 print(f"    Error: {server['error']}")
-    
+
     async def cmd_connect(self, command: str):
-        """Connect to a database"""
         parts = command.split()
         if len(parts) != 3:
             print("Usage: connect <server_id> <database>")
             return
-        
-        server_id = parts[1]
-        database = parts[2]
-        
-        result = await self.call_tool("connect_database", {
-            "server_id": server_id,
-            "database": database
-        })
-        
+
+        server_id, database = parts[1], parts[2]
+        result = await self.call_tool(
+            "connect_database", {"server_id": server_id, "database": database}
+        )
+
         if result.get("status") == "connected":
             print(f"Connected to {server_id}/{database}")
             print(f"MySQL Version: {result.get('mysql_version')}")
         else:
             print(f"Connection failed: {result.get('error')}")
-    
+
     async def cmd_disconnect(self):
-        """Disconnect from database"""
         result = await self.call_tool("disconnect_database", {})
-        print(f"Disconnection status: {result.get('status')}")
-    
+        print(f"Disconnection status: {result.get('status')} ({result.get('message', 'ok')})")
+
     async def cmd_execute_sql(self, command: str):
-        """Execute SQL query"""
-        # Extract SQL query from command
         if not command.startswith("sql "):
             print("Usage: sql <query>")
             return
-        
+
         query = command[4:].strip()
         if not query:
             print("No query provided")
             return
-        
+
         print(f"Executing: {query}")
         result = await self.call_tool("execute_sql", {"query": query})
-        
-        if result.get("status") == "success":
-            if "rows" in result:
-                # SELECT query
-                print(f"\nQuery executed successfully ({result['execution_time']:.3f}s)")
-                print(f"Returned {result['row_count']} rows")
-                
-                if result['rows']:
-                    # Print table header
-                    columns = result['columns']
-                    print("\n" + " | ".join(columns))
-                    print("-" * (sum(len(col) for col in columns) + 3 * (len(columns) - 1)))
-                    
-                    # Print rows
-                    for row in result['rows'][:10]:  # Limit to 10 rows for display
-                        values = [str(row.get(col, '')) for col in columns]
-                        print(" | ".join(values))
-                    
-                    if result['row_count'] > 10:
-                        print(f"\n... and {result['row_count'] - 10} more rows")
-            else:
-                # Non-SELECT query
-                print(f"\nQuery executed successfully ({result['execution_time']:.3f}s)")
-                print(f"Affected rows: {result.get('affected_rows', 0)}")
-        else:
+
+        if result.get("status") != "success":
             print(f"Query failed: {result.get('error')}")
-    
-    async def cmd_status(self):
-        """Show connection status"""
-        result = await self.call_tool("get_connection_status", {})
-        
-        print("\nConnection Status:")
-        print(f"  Current session: {result.get('current_session', 'N/A')}")
-        
-        if result['active_connections']:
-            print("\n  Active connections:")
-            for conn in result['active_connections']:
-                print(f"    - {conn['server_id']}/{conn['database']} ({conn['server_alias']})")
+            return
+
+        if "rows" in result:
+            print(f"\nQuery executed successfully ({result['execution_time']:.3f}s)")
+            print(f"Returned {result['row_count']} rows")
+            columns = result.get("columns", [])
+            if columns:
+                print("\n" + " | ".join(columns))
+                print("-" * (sum(len(col) for col in columns) + 3 * (len(columns) - 1)))
+                for row in result["rows"][:10]:
+                    values = [str(row.get(col, "")) for col in columns]
+                    print(" | ".join(values))
+                if result["row_count"] > 10:
+                    print(f"\n... and {result['row_count'] - 10} more rows")
         else:
-            print("\n  No active connections")
-        
-        if result['connection_pools']:
+            print(f"\nQuery executed successfully ({result['execution_time']:.3f}s)")
+            print(f"Affected rows: {result.get('affected_rows', 0)}")
+
+    async def cmd_status(self):
+        result = await self.call_tool("get_connection_status", {})
+
+        print("\nConnection Status:")
+        session = result.get("session")
+        if session:
+            print(
+                f"  This session: {session['session_id']} -> {session['server_id']}/{session['database']} ({session['server_alias']})"
+            )
+        else:
+            print("  This session has no active connection")
+
+        active = result.get("active_connections", [])
+        if active:
+            print("\n  Active connections:")
+            for conn in active:
+                print(
+                    f"    - {conn['session_id']}: {conn['server_id']}/{conn['database']} ({conn['server_alias']})"
+                )
+        else:
+            print("\n  No active connections across sessions")
+
+        pools = result.get("connection_pools", [])
+        if pools:
             print("\n  Connection pools:")
-            for pool in result['connection_pools']:
-                print(f"    - {pool['server_id']}: {pool['freesize']}/{pool['size']} free (max: {pool['maxsize']})")
-    
+            for pool in pools:
+                print(
+                    f"    - {pool['server_id']}: {pool['freesize']}/{pool['size']} free (max: {pool['maxsize']})"
+                )
+        else:
+            print("\n  No pools have been created yet")
+
     async def run_automated_tests(self):
-        """Run automated test suite"""
         print("\n=== Running Automated Tests ===\n")
-        
         tests_passed = 0
         tests_failed = 0
-        
-        # Test 0: Verify tools are loaded
-        print("Test 0: Verify MCP tools are loaded")
-        try:
-            if not self.tools:
-                print("  ⚠ No tools loaded - checking if server is properly initialized")
-                # Wait a bit for initialization
-                await asyncio.sleep(1)
-            
-            print(f"  Available tools: {list(self.tools.keys())}")
-            assert len(self.tools) == 5, f"Expected 5 tools, got {len(self.tools)}"
-            print("  ✓ Passed")
-            tests_passed += 1
-        except Exception as e:
-            print(f"  ✗ Failed: {e}")
-            tests_failed += 1
-            print("  ⚠ Continuing with remaining tests...")
-        
-        # Test 1: List databases
-        print("\nTest 1: List available databases")
-        try:
-            result = await self.call_tool("list_available_databases", {})
-            assert "servers" in result
-            assert "summary" in result
-            print(f"  Found {result['summary']['enabled']} enabled servers")
-            print("  ✓ Passed")
-            tests_passed += 1
-        except Exception as e:
-            print(f"  ✗ Failed: {e}")
-            tests_failed += 1
-        
-        # Test 2: Connect to database
-        print("\nTest 2: Connect to database")
-        try:
-            # Get first available server
-            list_result = await self.call_tool("list_available_databases", {})
-            if list_result["servers"] and list_result["servers"][0]["databases"]:
-                server = list_result["servers"][0]
-                database = server["databases"][0]
-                
-                result = await self.call_tool("connect_database", {
-                    "server_id": server["id"],
-                    "database": database
-                })
-                assert result.get("status") == "connected"
+
+        async def record(test_name: str, coro) -> None:
+            nonlocal tests_passed, tests_failed
+            print(f"{test_name}")
+            try:
+                await coro
                 print("  ✓ Passed")
                 tests_passed += 1
-            else:
-                print("  ⚠ Skipped: No available databases")
-        except Exception as e:
-            print(f"  ✗ Failed: {e}")
-            tests_failed += 1
-        
-        # Test 3: Execute SQL query
-        print("\nTest 3: Execute SQL query")
-        try:
-            result = await self.call_tool("execute_sql", {
-                "query": "SELECT 1 as test_column"
-            })
+            except Exception as exc:
+                print(f"  ✗ Failed: {exc}")
+                tests_failed += 1
+
+        await record("Test 0: Tools available", self.cmd_tools())
+
+        async def test_list():
+            result = await self.call_tool("list_available_databases", {})
+            assert "servers" in result
+
+        await record("Test 1: List available databases", test_list())
+
+        async def test_connect():
+            result = await self.call_tool("list_available_databases", {})
+            if not result.get("servers"):
+                raise RuntimeError("No servers configured")
+            server = result["servers"][0]
+            if not server.get("databases"):
+                raise RuntimeError("Server has no databases to test")
+            db = server["databases"][0]
+            connect_result = await self.call_tool(
+                "connect_database", {"server_id": server["id"], "database": db}
+            )
+            assert connect_result.get("status") == "connected"
+
+        await record("Test 2: Connect to database", test_connect())
+
+        async def test_query():
+            result = await self.call_tool("execute_sql", {"query": "SELECT 1 as test_column"})
             assert result.get("status") == "success"
-            assert result.get("rows") == [{"test_column": 1}]
-            print("  ✓ Passed")
-            tests_passed += 1
-        except Exception as e:
-            print(f"  ✗ Failed: {e}")
-            tests_failed += 1
-        
-        # Test 4: Get connection status
-        print("\nTest 4: Get connection status")
-        try:
+
+        await record("Test 3: Execute SQL", test_query())
+
+        async def test_status():
             result = await self.call_tool("get_connection_status", {})
             assert "active_connections" in result
-            assert "connection_pools" in result
-            print("  ✓ Passed")
-            tests_passed += 1
-        except Exception as e:
-            print(f"  ✗ Failed: {e}")
-            tests_failed += 1
-        
-        # Test 5: Disconnect
-        print("\nTest 5: Disconnect from database")
-        try:
+
+        await record("Test 4: Connection status", test_status())
+
+        async def test_disconnect():
             result = await self.call_tool("disconnect_database", {})
             assert "status" in result
-            print("  ✓ Passed")
-            tests_passed += 1
-        except Exception as e:
-            print(f"  ✗ Failed: {e}")
-            tests_failed += 1
-        
-        # Test 6: SQL with default database
-        print("\nTest 6: SQL with default database (if configured)")
-        try:
-            # Check if any server has default database
+
+        await record("Test 5: Disconnect", test_disconnect())
+
+        async def test_default_db():
             list_result = await self.call_tool("list_available_databases", {})
-            default_db_server = None
-            for server in list_result["servers"]:
+            default_server: Optional[Dict[str, Any]] = None
+            for server in list_result.get("servers", []):
                 if server.get("default_database"):
-                    default_db_server = server
+                    default_server = server
                     break
-            
-            if default_db_server:
-                # Disconnect first
-                await self.call_tool("disconnect_database", {})
-                
-                # Try SQL without explicit connection
-                result = await self.call_tool("execute_sql", {
-                    "query": "SELECT DATABASE() as current_db"
-                })
-                
-                if result.get("status") == "success":
-                    print("  ✓ Passed - Default database used")
-                    tests_passed += 1
-                else:
-                    print("  ℹ Default database not automatically used")
-            else:
+            if not default_server:
                 print("  ⚠ Skipped: No server with default database")
-        except Exception as e:
-            print(f"  ✗ Failed: {e}")
-            tests_failed += 1
-        
-        print(f"\n=== Test Results ===")
+                return
+            await self.call_tool("disconnect_database", {})
+            result = await self.call_tool("execute_sql", {"query": "SELECT DATABASE() as current_db"})
+            assert result.get("status") == "success"
+
+        await record("Test 6: Default database execution", test_default_db())
+
+        print("\n=== Test Results ===")
         print(f"Passed: {tests_passed}")
         print(f"Failed: {tests_failed}")
         print(f"Total: {tests_passed + tests_failed}")
 
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Test client for the Secure MySQL FastMCP server")
+    parser.add_argument(
+        "--url",
+        default="http://127.0.0.1:8090/mcp",
+        help="Streamable HTTP endpoint for the MCP server (default: http://127.0.0.1:8090/mcp)",
+    )
+    parser.add_argument(
+        "--token",
+        default=None,
+        help="Bearer token to send in Authorization header",
+    )
+    return parser.parse_args()
+
+
 async def main():
-    """Main entry point"""
-    client = MySQLMCPTestClient()
-    
+    args = parse_args()
+    client = MySQLMCPTestClient(args.url, args.token)
+
     try:
-        # Get server script path from command line or use default
-        server_script = sys.argv[1] if len(sys.argv) > 1 else "secure_mysql_mcp_server.py"
-        
-        await client.run_with_server(server_script)
+        await client.run()
     except KeyboardInterrupt:
         print("\nExiting...")
-    except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,4 +1,9 @@
 {
+  "auth": {
+    "tokens": [
+      "replace-with-strong-token"
+    ]
+  },
   "encryption_key": "sNimWThMb9qUqCd_FoIBd63NnKPxvVzlUh5ua2QiLPQ=",
   "servers": [
     {

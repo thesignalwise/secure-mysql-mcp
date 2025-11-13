@@ -138,21 +138,42 @@ print(f"Encrypted password: {encrypted_password}")
 - `max_connections`: 连接池中的最大连接数
 - `connection_timeout`: 连接超时时间(秒)
 - `permissions`: 权限数组 (例如: ["READ_ONLY"])
+- 顶层 `auth.tokens`: 允许访问HTTP端点的 Bearer Token 列表（也可用 `.env` 中的 `MCP_BEARER_TOKENS` 覆盖）
 
 ## 使用方法
 
 ### 运行服务器
 
 ```bash
-# 使用默认配置文件
-python secure_mysql_mcp_server.py
+# 使用 start.sh，默认监听 0.0.0.0:8090
+./start.sh                  # 等价于 host=0.0.0.0 port=8090 path=/mcp
+./start.sh 8900             # 指定端口
+./start.sh 9000 0.0.0.0     # 指定端口与主机
 
-# 使用自定义配置文件
-python secure_mysql_mcp_server.py path/to/config.json
+# 直接运行脚本
+python secure_mysql_mcp_server.py --host 0.0.0.0 --port 8090 --path /mcp
+python secure_mysql_mcp_server.py config/dev.json --host 0.0.0.0 --port 9000 --path /secure-mcp
 
-# 显示帮助信息
+# 查看全部参数
 python secure_mysql_mcp_server.py --help
 ```
+
+### HTTP认证与安全
+
+- 在 `config/servers.json` 顶层或 `config/servers.example.json` 中使用
+  ```json
+  "auth": {
+    "tokens": ["token-a", "token-b"]
+  }
+  ```
+  定义可用的 Bearer Token。
+- 也可以通过环境变量提供：`MCP_BEARER_TOKENS=tokenA,tokenB` 或 `MCP_BEARER_TOKEN=token`.
+- 所有客户端必须在请求头里携带 `Authorization: Bearer <token>`。缺失或不匹配会返回 401/403。
+
+### SQL 审计日志
+
+- 所有 `execute_sql` 调用（成功、失败或被 READ_ONLY 拦截）都会写入 `logs/sql_audit.log`。
+- 每条日志包含 session_id、server_id、database、Bearer Token 前6位、查询文本、耗时、影响行数/返回行数以及错误信息，方便追踪。
 
 ### 密码加密工具
 
@@ -170,7 +191,7 @@ python encrypt_password.py --help
 ### 测试客户端
 
 ```bash
-python test_client.py
+python test_client.py --url http://127.0.0.1:8090/mcp --token <your-token>
 ```
 
 测试客户端中可用的命令：
@@ -187,20 +208,22 @@ python test_client.py
 
 ### 与Claude Desktop集成
 
-1. 添加到Claude Desktop配置：
+1. 启动服务器（例如 `./start.sh` 或 `python secure_mysql_mcp_server.py --host 0.0.0.0 --port 8090 --path /mcp`）
+2. 在 `claude_desktop_config.json` 中添加HTTP端点，并配置 Authorization 头：
    ```json
    {
      "mcpServers": {
        "mysql": {
-         "command": "python",
-         "args": ["/path/to/secure_mysql_mcp_server.py"],
-         "cwd": "/path/to/secure-mysql-mcp"
+         "type": "http",
+         "url": "http://127.0.0.1:8090/mcp",
+         "headers": {
+           "Authorization": "Bearer <your-token>"
+         }
        }
      }
    }
    ```
-
-2. 重启Claude Desktop
+3. 重启Claude Desktop
 
 ## 可用工具
 
@@ -296,7 +319,7 @@ chmod 700 config/
 ### 运行测试
 
 ```bash
-python test_client.py
+python test_client.py --url http://127.0.0.1:8090/mcp --token <your-token>
 # 然后输入 'test' 来运行自动化测试
 ```
 
@@ -334,8 +357,8 @@ python test_client.py
 # 1. 安装依赖
 pip install -r requirements.txt
 
-# 2. 生成初始配置
-python secure_mysql_mcp_server.py
+# 2. 启动HTTP服务器（第一次运行会生成示例配置）
+./start.sh 8090 0.0.0.0
 
 # 3. 编辑配置文件
 # 编辑 config/servers.json，添加你的MySQL服务器信息
@@ -343,14 +366,14 @@ python secure_mysql_mcp_server.py
 # 4. 加密密码（推荐）
 python encrypt_password.py
 
-# 5. 测试配置
-python test_client.py
+# 5. 通过HTTP测试端点
+python test_client.py --url http://127.0.0.1:8090/mcp --token <your-token>
 ```
 
 ### 2. 在测试客户端中的操作
 ```bash
 # 启动测试客户端
-python test_client.py
+python test_client.py --url http://127.0.0.1:8090/mcp --token <your-token>
 
 # 在客户端中执行：
 > list                          # 列出所有服务器
@@ -531,21 +554,39 @@ print(f"Encrypted password: {encrypted_password}")
 - `max_connections`: Maximum connections in the pool
 - `connection_timeout`: Connection timeout in seconds
 - `permissions`: Array of permissions (e.g., ["READ_ONLY"])
+- Top-level `auth.tokens`: List of Bearer tokens allowed to call the HTTP endpoint (can also use `MCP_BEARER_TOKENS`/.env)
 
 ## Usage
 
 ### Running the Server
 
 ```bash
-# Use default config file
-python secure_mysql_mcp_server.py
+# Recommended helper
+./start.sh                 # host=0.0.0.0, port=8090, path=/mcp
+./start.sh 8900            # override port
+./start.sh 9000 0.0.0.0    # override both port and host
 
-# Use custom config file
-python secure_mysql_mcp_server.py path/to/config.json
+# Direct invocation
+python secure_mysql_mcp_server.py --host 0.0.0.0 --port 8090 --path /mcp
+python secure_mysql_mcp_server.py config/dev.json --host 0.0.0.0 --port 9000 --path /secure-mcp
 
-# Show help information
+# CLI help
 python secure_mysql_mcp_server.py --help
 ```
+
+### HTTP Authentication & Security
+
+- Declare Bearer tokens in `config/servers.json`:
+  ```json
+  "auth": {
+    "tokens": ["token-a", "token-b"]
+  }
+  ```
+- Or provide them via environment variables: `MCP_BEARER_TOKENS=tokenA,tokenB` or `MCP_BEARER_TOKEN=token`.
+- Every HTTP request must supply `Authorization: Bearer <token>`; otherwise the server responds with 401/403.
+
+- Each `execute_sql` call logs an entry to `logs/sql_audit.log`, including session id, server/database, Bearer token prefix (first 6 chars), query text, timing, row/affected counts, and errors.
+- Logs are appended even when the query is blocked by READ_ONLY restrictions or fails to execute.
 
 ### Password Encryption Tool
 
@@ -563,7 +604,7 @@ python encrypt_password.py --help
 ### Testing with the Test Client
 
 ```bash
-python test_client.py
+python test_client.py --url http://127.0.0.1:8090/mcp --token <your-token>
 ```
 
 Available commands in the test client:
@@ -580,20 +621,22 @@ Available commands in the test client:
 
 ### Using with Claude Desktop
 
-1. Add to Claude Desktop configuration:
+1. Start the HTTP server (`./start.sh` or `python secure_mysql_mcp_server.py --host 0.0.0.0 --port 8090 --path /mcp`)
+2. Register the endpoint in `claude_desktop_config.json`, including headers:
    ```json
    {
      "mcpServers": {
        "mysql": {
-         "command": "python",
-         "args": ["/path/to/secure_mysql_mcp_server.py"],
-         "cwd": "/path/to/secure-mysql-mcp"
+         "type": "http",
+         "url": "http://127.0.0.1:8090/mcp",
+         "headers": {
+           "Authorization": "Bearer <your-token>"
+         }
        }
      }
    }
    ```
-
-2. Restart Claude Desktop
+3. Restart Claude Desktop
 
 ## Available Tools
 
@@ -689,8 +732,8 @@ chmod 700 config/
 ### Running Tests
 
 ```bash
-python test_client.py
-# Then type 'test' to run automated tests
+python test_client.py --url http://127.0.0.1:8090/mcp --token <your-token>
+# Then type 'test' inside the client to run automated checks
 ```
 
 ### Adding New Features
@@ -727,8 +770,8 @@ python test_client.py
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Generate initial configuration
-python secure_mysql_mcp_server.py
+# 2. Start the HTTP server (first run also creates sample config)
+./start.sh
 
 # 3. Edit configuration file
 # Edit config/servers.json, add your MySQL server information
@@ -736,14 +779,14 @@ python secure_mysql_mcp_server.py
 # 4. Encrypt passwords (recommended)
 python encrypt_password.py
 
-# 5. Test configuration
-python test_client.py
+# 5. Exercise the HTTP endpoint
+python test_client.py --url http://127.0.0.1:8090/mcp --token <your-token>
 ```
 
 ### 2. Test Client Operations
 ```bash
 # Start test client
-python test_client.py
+python test_client.py --url http://127.0.0.1:8090/mcp --token <your-token>
 
 # In the client, execute:
 > list                          # List all servers
@@ -751,8 +794,8 @@ python test_client.py
 > sql SELECT * FROM users LIMIT 5  # Execute query
 > status                        # Check connection status
 > disconnect                    # Disconnect
-> test                         # Run automated tests
-> quit                         # Exit
+> test                          # Run automated tests
+> quit                          # Exit
 ```
 
 ## Example Claude Prompts
