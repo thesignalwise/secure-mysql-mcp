@@ -385,6 +385,16 @@ python test_client.py --url http://127.0.0.1:8090/mcp --token <your-token>
 > quit                         # 退出
 ```
 
+### 可视化指南
+
+以下截图展示了在 Cherry Studio MCP 中配置并使用本服务的流程：
+
+![Cherry Studio MCP Configuration](images/Cherry-Studio-MCP-Configuration.png)
+
+![Cherry Studio MCP Using 1](images/Cherry-Studio-MCP-Using-1.png)
+
+![Cherry Studio MCP Using 2](images/Cherry-Studio-MCP-Using-2.png)
+
 ## 示例Claude提示
 
 ```
@@ -797,6 +807,16 @@ python test_client.py --url http://127.0.0.1:8090/mcp --token <your-token>
 > test                          # Run automated tests
 > quit                          # Exit
 ```
+
+### Visual Guide
+
+Cherry Studio MCP screenshots that demonstrate configuration and querying:
+
+![Cherry Studio MCP Configuration](images/Cherry-Studio-MCP-Configuration.png)
+
+![Cherry Studio MCP Using 1](images/Cherry-Studio-MCP-Using-1.png)
+
+![Cherry Studio MCP Using 2](images/Cherry-Studio-MCP-Using-2.png)
 
 ## Example Claude Prompts
 
