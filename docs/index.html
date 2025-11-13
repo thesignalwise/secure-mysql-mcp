@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Secure MySQL MCP server with FastMCP HTTP transport, bearer authentication, SQL auditing, and quick start guide (中文/English)." />
+  <meta name="keywords" content="MySQL, MCP, FastMCP, Bearer Auth, SQL Audit, Claude, Secure Database Proxy" />
+  <meta property="og:title" content="Secure MySQL MCP" />
+  <meta property="og:description" content="A secure FastMCP-compatible MySQL service with bearer authentication, auditing, and quick-start instructions (中文/English)." />
+  <meta property="og:type" content="website" />
   <title>Secure MySQL MCP</title>
   <style>
     :root {
@@ -82,11 +87,26 @@
       border-radius: 12px;
       box-shadow: 0 10px 25px rgba(15,23,42,0.12);
     }
+    .split {
+      display: grid;
+      gap: 1rem;
+    }
+    @media (min-width: 720px) {
+      .split {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
     footer {
       text-align: center;
       padding: 2rem 1rem 3rem;
       color: var(--muted);
       font-size: 0.9rem;
+    }
+    footer .links a {
+      color: inherit;
+      text-decoration: none;
+      font-weight: 600;
+      margin: 0 0.25rem;
     }
   </style>
 </head>
@@ -94,38 +114,48 @@
   <header>
     <h1>Secure MySQL MCP</h1>
     <p>面向 Claude / MCP 生态的安全 MySQL 服务，支持多实例、只读权限、防泄露加密与 HTTP Bearer 认证。</p>
-    <a class="cta" href="https://github.com/thesignalwise/secure-mysql-mcp" target="_blank" rel="noreferrer">查看 GitHub</a>
+    <p>Secure FastMCP-ready MySQL server with bearer auth, auditing, and an opinionated developer experience.</p>
+    <a class="cta" href="https://github.com/thesignalwise/secure-mysql-mcp" target="_blank" rel="noreferrer">查看 GitHub / View on GitHub</a>
   </header>
 
   <main class="container">
     <section class="card">
-      <h2>核心特性</h2>
-      <ul>
-        <li>🎯 FastMCP HTTP 服务：默认 0.0.0.0:8090，SSE / streamable HTTP 兼容</li>
-        <li>🔐 Bearer Token 多用户认证，可通过 config/servers.json 或 .env 配置</li>
-        <li>🛡️ READ_ONLY 保护，阻止危险写操作且自动审计完整 SQL</li>
-        <li>📜 `logs/sql_audit.log` 记录 session、数据库、耗时和 Token 前缀</li>
-        <li>🧪 自带 `test_client.py` CLI；`start.sh` 一键启动</li>
-      </ul>
+      <h2>核心特性 · Key Features</h2>
+      <div class="split">
+        <ul>
+          <li>🎯 FastMCP HTTP 服务：默认 0.0.0.0:8090，兼容 SSE/streamable-http</li>
+          <li>🔐 Bearer Token 多用户认证，可在 config/servers.json 或 .env 中集中管理</li>
+          <li>🛡️ READ_ONLY 防护，自动阻断危险写操作并记录审计日志</li>
+          <li>📜 `logs/sql_audit.log` 捕获 session、数据库、耗时、Token 前缀</li>
+          <li>🧪 提供 `test_client.py` 与 `start.sh`，一键启动/调试</li>
+        </ul>
+        <ul>
+          <li>🎯 FastMCP HTTP transport (0.0.0.0:8090) compatible with streamable HTTP & SSE</li>
+          <li>🔐 Multi-tenant bearer authentication via config JSON or .env</li>
+          <li>🛡️ READ_ONLY enforcement blocking write verbs while logging attempts</li>
+          <li>📜 Unified SQL audit log capturing session IDs, DB names, latency, token prefix</li>
+          <li>🧪 Includes CLI test client & `start.sh` for instant local running</li>
+        </ul>
+      </div>
     </section>
 
     <section class="card">
-      <h2>快速上手</h2>
-      <pre><code># 安装依赖
+      <h2>快速上手 · Quick Start</h2>
+      <pre><code># 安装依赖 / Install dependencies
 pip install -r requirements.txt
 
-# 启动服务（默认 0.0.0.0:8090）
+# 启动服务（默认 0.0.0.0:8090）/ Start server
 ./start.sh
 
-# 运行测试客户端
+# 运行测试客户端 / Run test client
 python test_client.py --url http://127.0.0.1:8090/mcp \
   --token &lt;your-token&gt;
 </code></pre>
-      <p>配置文件示例请查看 <code>config/servers.example.json</code>，其中顶层 <code>auth.tokens</code> 可填写多个 Bearer Token。</p>
+      <p>配置文件示例请查看 <code>config/servers.example.json</code>，其中顶层 <code>auth.tokens</code> 可填写多个 Bearer Token；Also refer to the same file for English comments.</p>
     </section>
 
     <section class="card">
-      <h2>UI 预览</h2>
+      <h2>UI 预览 · UI Preview</h2>
       <div class="gallery">
         <img src="images/Cherry-Studio-MCP-Configuration.png" alt="Cherry Studio MCP Configuration" />
         <img src="images/Cherry-Studio-MCP-Using-1.png" alt="Cherry Studio MCP Usage 1" />
@@ -136,7 +166,7 @@ python test_client.py --url http://127.0.0.1:8090/mcp \
   </main>
 
   <footer>
-    <p>© 2025 Secure MySQL MCP · Bearer Auth · SQL Audit · FastMCP · <a href="https://thesignalwise.com" target="_blank" rel="noreferrer">见微知著官网</a> · <a href="https://github.com/thesignalwise/secure-mysql-mcp" target="_blank" rel="noreferrer">GitHub 项目</a></p>
+    <p class="links">© 2025 Secure MySQL MCP · Bearer Auth · SQL Audit · FastMCP · <a href="https://thesignalwise.com" target="_blank" rel="noreferrer">见微知著官网</a> · <a href="https://github.com/thesignalwise/secure-mysql-mcp" target="_blank" rel="noreferrer">GitHub 项目</a></p>
   </footer>
 </body>
 </html>
