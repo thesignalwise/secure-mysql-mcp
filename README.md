@@ -419,6 +419,8 @@ MIT License - 详见LICENSE文件
 
 ---
 
+**项目官网 / Project Site**: https://secure-mysql-mcp.thesignalwise.com/
+
 **版本信息**: v1.1.0  
 **最后更新**: 2025-11-13  
 **新增功能**: 密码加密工具、增强安全性
@@ -842,6 +844,8 @@ MIT License - see LICENSE file for details
 Contributions welcome! Please submit pull requests or open issues for bugs and feature requests.
 
 ---
+
+**Project Site**: https://secure-mysql-mcp.thesignalwise.com/
 
 **Version Info**: v1.1.0  
 **Last Updated**: 2025-11-13  
