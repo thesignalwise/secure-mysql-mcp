@@ -360,8 +360,9 @@ pip install -r requirements.txt
 # 2. 启动HTTP服务器（第一次运行会生成示例配置）
 ./start.sh 8090 0.0.0.0
 
-# 3. 编辑配置文件
-# 编辑 config/servers.json，添加你的MySQL服务器信息
+# 3. 复制并编辑配置文件
+cp config/servers.example.json config/servers.json
+# 然后编辑 config/servers.json，添加你的MySQL服务器信息
 
 # 4. 加密密码（推荐）
 python encrypt_password.py
@@ -783,7 +784,8 @@ pip install -r requirements.txt
 # 2. Start the HTTP server (first run also creates sample config)
 ./start.sh
 
-# 3. Edit configuration file
+# 3. Copy and edit configuration file
+cp config/servers.example.json config/servers.json
 # Edit config/servers.json, add your MySQL server information
 
 # 4. Encrypt passwords (recommended)
